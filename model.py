@@ -8,24 +8,25 @@ import tensorflow as tf
 from layers.lstm import LSTM
 from layers.reshape import Reshape
 
+
 class DataGenerator:
     def __init__(self, datasource, data_length=500):
         self.data_length = 500
         self.datasource = datasource
-    
+
     def create_sine_wave(self, n, time_steps):
         samples = []
         ix = np.arange(n) + 1
-        f = 100 #np.random.uniform(low=5, high=0)
+        f = 100  # np.random.uniform(low=5, high=0)
         A = np.random.uniform(low=0.9, high=0.8999, size=n)
-        offset = 0# np.random.uniform(low=-np.pi, high=np.pi, size=n)
+        offset = 0  # np.random.uniform(low=-np.pi, high=np.pi, size=n)
         sine_wave = A*np.sin(2*np.pi*f*ix/float(n) + offset)
 
         sample_size = n // time_steps
 
         for i in range(0, n, time_steps):
             samples.append(sine_wave[i:i+time_steps])
-        
+
         samples = np.array(samples)
         return samples.reshape(sample_size, time_steps, 1)
 
@@ -38,12 +39,11 @@ class DataGenerator:
                 f = np.random.uniform(low=1, high=5)
                 A = np.random.uniform(low=0.1, high=0.9)
                 offset = np.random.uniform(low=-np.pi, high=np.pi)
-                signals.append(A*np.sin(2*np.pi*f*ix/np.float32(seq_length)+offset))
+                signals.append(
+                    A*np.sin(2*np.pi*f*ix/np.float32(seq_length)+offset))
             samples.append(np.array(signals).T)
         samples = np.array(samples)
         return samples
-
-
 
 
 class Generator:
@@ -61,8 +61,10 @@ class Generator:
         #     Reshape(target_shape=(self.batch_size, self.seq_length, self.num_generated_features))
         # ])
         self.model = tf.keras.models.Sequential([
-            tf.keras.layers.LSTM(self.hidden_size, input_shape=(self.seq_length, self.latent_dim), return_sequences=True, name='g_lstm1'),
-            tf.keras.layers.LSTM(self.hidden_size, return_sequences=True, recurrent_dropout=0.4, name='g_lstm2'),
+            tf.keras.layers.LSTM(self.hidden_size, input_shape=(
+                self.seq_length, self.latent_dim), return_sequences=True, name='g_lstm1'),
+            tf.keras.layers.LSTM(
+                self.hidden_size, return_sequences=True, recurrent_dropout=0.4, name='g_lstm2'),
             tf.keras.layers.LSTM(1, return_sequences=True, name='g_lstm3')
         ], name='generator')
 
@@ -73,7 +75,8 @@ class Generator:
         #         x =  self.log_generator.create_samples(n=n, steps_in=self.latent_dim)
         # x = self.data_gen.create_sine_wave(n=n, time_steps=time_steps)
 
-        x = self.all_real_samples[np.random.choice(self.all_real_samples.shape[0], self.batch_size, 1), :]
+        x = self.all_real_samples[np.random.choice(
+            self.all_real_samples.shape[0], self.batch_size, 1), :]
         # y = np.ones((len(x), 1))
         y = np.ones_like(x)
         return x, y
@@ -95,17 +98,21 @@ class Generator:
 class Discriminator:
     def __init__(self, input_shape, hidden_size=100):
         self.model = tf.keras.models.Sequential([
-            tf.keras.layers.LSTM(hidden_size, input_shape=input_shape, return_sequences=True, name='d_lstm'),
-            tf.keras.layers.LSTM(hidden_size, return_sequences=True, name='d_lstm2', recurrent_dropout=0.4),
+            tf.keras.layers.LSTM(
+                hidden_size, input_shape=input_shape, return_sequences=True, name='d_lstm'),
+            tf.keras.layers.LSTM(
+                hidden_size, return_sequences=True, name='d_lstm2', recurrent_dropout=0.4),
             tf.keras.layers.Dense(1, activation='linear', name='d_output')
         ], name='discriminator')
 
-
-        self.model.compile(loss=self.d_loss, optimizer=tf.keras.optimizers.SGD(lr=0.1), metrics=['acc'])
+        self.model.compile(
+            loss=self.d_loss, optimizer=tf.keras.optimizers.SGD(lr=0.1), metrics=['acc'])
 
     def d_loss(self, y_true, y_pred):
-        loss = tf.keras.losses.binary_crossentropy(y_true, y_pred, from_logits=True)
+        loss = tf.keras.losses.binary_crossentropy(
+            y_true, y_pred, from_logits=True)
         return loss
+
 
 class GAN:
     real_loss = []
@@ -113,30 +120,73 @@ class GAN:
     def __init__(self, *args, **kwargs):
 
         self.generator = Generator(*args, **kwargs)
-        gen_output = (self.generator.seq_length, self.generator.num_generated_features)
+        gen_output = (self.generator.seq_length,
+                      self.generator.num_generated_features)
         self.discriminator = Discriminator(input_shape=gen_output)
         self.discriminator.model.trainable = False
 
         self.batch_size = self.generator.batch_size
         self.seq_length = self.generator.seq_length
 
-
         self.model = tf.keras.models.Sequential([
             self.generator.model,
             self.discriminator.model
         ], name='gan')
 
-        self.model.compile(loss=self.gan_loss, optimizer=tf.keras.optimizers.SGD(lr=0.1), metrics=['acc'])
+        self.model.compile(
+            loss=self.gan_loss, optimizer=tf.keras.optimizers.SGD(lr=0.1), metrics=['acc'])
 
     def gan_loss(self, y_true, y_pred):
-        loss = tf.keras.losses.binary_crossentropy(y_true, y_pred, from_logits=True)
+        loss = tf.keras.losses.binary_crossentropy(
+            y_true, y_pred, from_logits=True)
         return loss
 
-    def train(self, epochs, n_eval, d_train_steps=5):
-        steps_over_data = len(self.generator.all_real_samples)//self.generator.batch_size
-        print("Begin Training with {} steps per epoch for every {} trains on discriminator".format(steps_over_data, d_train_steps))
-        for epoch in range(epochs+1):
- 
+    def load_weights(self):
+        self.generator.model.load_weights("generator_weights.h5")
+        self.discriminator.model.load_weights("discriminator_weights.h5")
+
+    def save_weights(self):
+        self.generator.model.save_weights("generator_weights.h5")
+        self.discriminator.model.save_weights("discriminator_weights.h5")
+
+    def plot_preds(self):
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(2, 4, sharey=True, sharex=True)
+
+        pred = self.generator.fake_samples()[0]
+        real = self.generator.real_samples()[0]
+
+        def random_pred(p):
+            # shape : 128, 30, 1
+            idx = np.random.randint(0, self.batch_size)
+            return p[idx, :, 0]
+
+        axs[0, 0].plot(random_pred(pred), c='b')
+        axs[0, 1].plot(random_pred(pred), c='b')
+        axs[1, 0].plot(random_pred(pred), c='b')
+        axs[1, 1].plot(random_pred(pred), c='b')
+
+        axs[0, 2].plot(random_pred(real), c='g')
+        axs[0, 3].plot(random_pred(real), c='g')
+        axs[1, 2].plot(random_pred(real), c='g')
+        axs[1, 3].plot(random_pred(real), c='g')
+
+        plt.show()
+
+    def train(self, epochs, n_eval, d_train_steps=5, load_weights=False, metric='loss'):
+        import time
+
+        if load_weights:
+            self.load_weights()
+            print("Loaded previously saved weights")
+
+        steps_over_data = len(
+            self.generator.all_real_samples)//self.generator.batch_size
+        print("Begin Training with {} steps per epoch for every {} trains on discriminator".format(
+            steps_over_data, d_train_steps))
+
+        for epoch in range(epochs):
+            start = time.time()
             for step in range(steps_over_data):
                 tmp_r, tmp_f = [], []
                 for _ in range(d_train_steps):
@@ -144,25 +194,31 @@ class GAN:
                     x_r, y_r = self.generator.real_samples()
                     x_f, y_f = self.generator.fake_samples()
 
-                    real = self.discriminator.model.fit(x_r, y_r, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
-                    fake = self.discriminator.model.fit(x_f, y_f, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
+                    real = self.discriminator.model.fit(
+                        x_r, y_r, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
+                    fake = self.discriminator.model.fit(
+                        x_f, y_f, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
 
-                    tmp_r.append(real['loss'])
-                    tmp_f.append(fake['loss'])
+                    tmp_r.append(real[metric])
+                    tmp_f.append(fake[metric])
 
             self.real_loss.append(np.mean(tmp_r))
             self.fake_loss.append(np.mean(tmp_f))
 
             x_gan = self.generator.sample_latent_space()
-            y_gan = np.ones((self.batch_size, self.seq_length, self.generator.num_generated_features)).astype(np.float32)
+            y_gan = np.ones((self.batch_size, self.seq_length,
+                             self.generator.num_generated_features)).astype(np.float32)
 
-            self.model.fit(x_gan, y_gan, batch_size=self.batch_size, epochs=1, verbose=0)
+            self.model.fit(
+                x_gan, y_gan, batch_size=self.batch_size, epochs=1, verbose=0)
 
+            end = time.time()-start
             if epoch % n_eval == 0:
 
-                print("Epoch: {}/{} Real Loss: {}\tFake Loss: {}".format(epoch, epochs, self.real_loss[-1], self.fake_loss[-1]))
+                print("Time: {}s Epoch: {}/{} Real Loss: {}\tFake Loss: {}".format(end, epoch+1,
+                                                                                   epochs, self.real_loss[-1], self.fake_loss[-1]))
 
-
+                self.save_weights()
 
 
 if __name__ == '__main__':
@@ -171,7 +227,7 @@ if __name__ == '__main__':
 
     gan.train(epochs=5, n_eval=1)
 
-    # batch_size = 3000 
+    # batch_size = 3000
     # seq_length = 30
     # latent_dim = 5
     # gen = Generator(latent_dim=latent_dim, seq_length=seq_length, batch_size=batch_size, hidden_size=100, num_generated_features=1)
@@ -198,4 +254,3 @@ if __name__ == '__main__':
 
     # # gan = GAN()
     # # # print(samples)
-
