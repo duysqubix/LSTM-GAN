@@ -5,9 +5,6 @@
 import numpy as np
 import tensorflow as tf
 
-from layers.lstm import LSTM
-from layers.reshape import Reshape
-
 
 class DataGenerator:
     def __init__(self, datasource, data_length=500):
@@ -69,7 +66,8 @@ class Generator:
         ], name='generator')
 
         self.data_gen = DataGenerator(None)
-        self.all_real_samples = self.data_gen.sine_wave()
+        self.all_real_samples = self.data_gen.sine_wave(
+            seq_length=self.seq_length, num_samples=self.seq_length*self.hidden_size*self.latent_dim)
 
     def real_samples(self):
         #         x =  self.log_generator.create_samples(n=n, steps_in=self.latent_dim)
@@ -141,13 +139,15 @@ class GAN:
             y_true, y_pred, from_logits=True)
         return loss
 
-    def load_weights(self):
-        self.generator.model.load_weights("generator_weights.h5")
-        self.discriminator.model.load_weights("discriminator_weights.h5")
+    def load_weights(self, names=None):
+        assert isinstance(names, (tuple, list))
+        self.generator.model.load_weights("{}_weights.h5".format(names[0]))
+        self.discriminator.model.load_weights("{}_weights.h5".format(names[1]))
 
-    def save_weights(self):
-        self.generator.model.save_weights("generator_weights.h5")
-        self.discriminator.model.save_weights("discriminator_weights.h5")
+    def save_weights(self, names=None):
+        assert isinstance(names, (tuple, list))
+        self.generator.model.save_weights("{}_weights.h5".format(names[0]))
+        self.discriminator.model.save_weights("{}_weights.h5".format(names[1]))
 
     def plot_preds(self):
         import matplotlib.pyplot as plt
@@ -173,11 +173,13 @@ class GAN:
 
         plt.show()
 
-    def train(self, epochs, n_eval, d_train_steps=5, load_weights=False, metric='loss'):
+    def train(self, epochs, n_eval, d_train_steps=5, load_weights=False, load_w_names=("generator", "discriminator"),
+              save_w_names=("generator", "discriminator"), clear_session=False):
+
         import time
 
         if load_weights:
-            self.load_weights()
+            self.load_weights(load_w_names)
             print("Loaded previously saved weights")
 
         steps_over_data = len(
@@ -188,19 +190,26 @@ class GAN:
         for epoch in range(epochs):
             start = time.time()
             for step in range(steps_over_data):
-                tmp_r, tmp_f = [], []
+
+                tmp_r = list()
+                tmp_f = list()
+
                 for _ in range(d_train_steps):
 
                     x_r, y_r = self.generator.real_samples()
                     x_f, y_f = self.generator.fake_samples()
 
-                    real = self.discriminator.model.fit(
-                        x_r, y_r, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
-                    fake = self.discriminator.model.fit(
-                        x_f, y_f, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
+                    # real = self.discriminator.model.fit(
+                    #     x_r, y_r, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
+                    # fake = self.discriminator.model.fit(
+                    #     x_f, y_f, epochs=1, batch_size=self.batch_size, verbose=0, shuffle=True).history
+                    real = self.discriminator.model.train_on_batch(
+                        x_r, y_r, reset_metrics=True)
+                    fake = self.discriminator.model.train_on_batch(
+                        x_f, y_f, reset_metrics=True)
 
-                    tmp_r.append(real[metric])
-                    tmp_f.append(fake[metric])
+                    tmp_r.append(real[0])
+                    tmp_f.append(fake[0])
 
             self.real_loss.append(np.mean(tmp_r))
             self.fake_loss.append(np.mean(tmp_f))
@@ -218,14 +227,19 @@ class GAN:
                 print("Time: {}s Epoch: {}/{} Real Loss: {}\tFake Loss: {}".format(end, epoch+1,
                                                                                    epochs, self.real_loss[-1], self.fake_loss[-1]))
 
-                self.save_weights()
+                self.save_weights(save_w_names)
+
+                if clear_session:
+                    tf.keras.backend.clear_session()
+                    print("Clearing Session")
 
 
 if __name__ == '__main__':
-    gan = GAN(latent_dim=5, seq_length=30, batch_size=28)
-    gan.model.summary()
-
-    gan.train(epochs=5, n_eval=1)
+    gan = GAN(latent_dim=5, seq_length=128, batch_size=28)
+    gan.generator.model.summary()
+    gan.discriminator.model.summary()
+    gan.train(epochs=1, n_eval=1, d_train_steps=1,
+              load_weights=False, save_w_names=("g", "d"))
 
     # batch_size = 3000
     # seq_length = 30
