@@ -1,7 +1,6 @@
 from model import GAN, Discriminator, Generator, DataGenerator
 
 
-@profile
 def train():
     gan = GAN(latent_dim=5, seq_length=30, batch_size=128)
     gan.discriminator.model.summary()

@@ -67,7 +67,7 @@ class Generator:
 
         self.data_gen = DataGenerator(None)
         self.all_real_samples = self.data_gen.sine_wave(
-            seq_length=self.seq_length, num_samples=self.seq_length*self.hidden_size*self.latent_dim)
+            seq_length=self.seq_length, num_samples=self.batch_size*self.hidden_size*self.latent_dim)
 
     def real_samples(self):
         #         x =  self.log_generator.create_samples(n=n, steps_in=self.latent_dim)
@@ -149,7 +149,7 @@ class GAN:
         self.generator.model.save_weights("{}_weights.h5".format(names[0]))
         self.discriminator.model.save_weights("{}_weights.h5".format(names[1]))
 
-    def plot_preds(self):
+    def plot_preds(self, epoch=None, save_plot=False):
         import matplotlib.pyplot as plt
         fig, axs = plt.subplots(2, 4, sharey=True, sharex=True)
 
@@ -171,7 +171,11 @@ class GAN:
         axs[1, 2].plot(random_pred(real), c='g')
         axs[1, 3].plot(random_pred(real), c='g')
 
-        plt.show()
+        if save_plot:
+            plt.savefig('result_imgs/results_epoch_{}.png'.format(epoch))
+        else:
+            plt.show()
+        plt.clf()
 
     def train(self, epochs, n_eval, d_train_steps=5, load_weights=False, load_w_names=("generator", "discriminator"),
               save_w_names=("generator", "discriminator"), clear_session=False):
@@ -189,11 +193,12 @@ class GAN:
 
         for epoch in range(epochs):
             start = time.time()
+
+            step_start = time.time()
             for step in range(steps_over_data):
 
                 tmp_r = list()
                 tmp_f = list()
-
                 for _ in range(d_train_steps):
 
                     x_r, y_r = self.generator.real_samples()
@@ -210,6 +215,10 @@ class GAN:
 
                     tmp_r.append(real[0])
                     tmp_f.append(fake[0])
+
+                if step % int((steps_over_data*.1)) == 0:
+                    print("\tSteps to go for epoch {}: {} ({}s)".format(
+                        epoch+1, steps_over_data-(step+1), time.time()-step_start))
 
             self.real_loss.append(np.mean(tmp_r))
             self.fake_loss.append(np.mean(tmp_f))
@@ -233,13 +242,15 @@ class GAN:
                     tf.keras.backend.clear_session()
                     print("Clearing Session")
 
+                self.plot_preds(epoch=epoch+1, save_plot=True)
+
 
 if __name__ == '__main__':
-    gan = GAN(latent_dim=5, seq_length=128, batch_size=28)
+    gan = GAN(latent_dim=5, seq_length=30, batch_size=128)
     gan.generator.model.summary()
     gan.discriminator.model.summary()
-    gan.train(epochs=1, n_eval=1, d_train_steps=1,
-              load_weights=False, save_w_names=("g", "d"))
+    gan.train(epochs=97, n_eval=1, d_train_steps=5,
+              load_weights=False, save_w_names=("g", "d"), load_w_names=('g', 'd'))
 
     # batch_size = 3000
     # seq_length = 30
