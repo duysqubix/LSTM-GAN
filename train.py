@@ -11,8 +11,8 @@ def train():
 
 def train_new():
     from model_opt import GAN
-    gan = GAN()
-    gan.train(epochs=1, n_eval=1, d_train_steps=1, save_w_names=("g2", "d2"))
+    gan = GAN(latent_dim=5, seq_length=30, batch_size=128)
+    gan.train(epochs=100, n_eval=1, d_train_steps=3, save_w_names=("g2", "d2"))
 
 
 if __name__ == '__main__':

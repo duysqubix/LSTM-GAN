@@ -141,8 +141,13 @@ class GAN:
 
     def load_weights(self, names=None):
         assert isinstance(names, (tuple, list))
-        self.generator.model.load_weights("{}_weights.h5".format(names[0]))
-        self.discriminator.model.load_weights("{}_weights.h5".format(names[1]))
+
+        try:
+            self.generator.model.load_weights("{}_weights.h5".format(names[0]))
+            self.discriminator.model.load_weights(
+                "{}_weights.h5".format(names[1]))
+        except FileNotFoundError:
+            print("Could not find weight files, skipping...")
 
     def save_weights(self, names=None):
         assert isinstance(names, (tuple, list))
@@ -166,12 +171,14 @@ class GAN:
                     pred_plots = False
                 for k in range(cols):
                     ptype = "Generated" if pred_plots else "Ground Truth"
-                    axs[i, k].set_title("{}: {}".format(ptype, k))
+                    axs[i, k].set_title("{}".format(ptype))
 
                     if pred_plots:
-                        axs[i, k].plot(fake_d[k, :, 0], c='c')
+                        axs[i, k].plot(
+                            fake_d[np.random.randint(0, len(fake_d)), :, 0], c='c')
                     else:
-                        axs[i, k].plot(real_d[k, :, 0], c='g')
+                        axs[i, k].plot(
+                            real_d[np.random.randint(0, len(real_d)), :, 0], c='g')
 
             break
 
@@ -254,7 +261,8 @@ class GAN:
                                                                                                              epoch+1,
                                                                                                              epochs,
                                                                                                              self.d_loss[-1][0],
-                                                                                                             self.d_loss[-1][1],
+                                                                                                             self.d_loss[-1][1] *
+                                                                                                             100.0,
                                                                                                              g_loss)
 
                 print(status)
@@ -265,7 +273,7 @@ class GAN:
                     tf.keras.backend.clear_session()
                     print("Clearing Session")
 
-                # self.plot_preds(epoch=epoch+1, save_plot=True)
+                self.plot_preds(rows=4, cols=6, save_plot=True)
 
 
 if __name__ == '__main__':
