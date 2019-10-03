@@ -166,6 +166,8 @@ class GAN:
                 rows, cols, sharey=True, sharex=True, figsize=(15, 10))
             pred_plots = True
 
+            fake_d = self.generator.model.predict(fake_d)
+
             for i in range(rows):
                 if i >= rows/2:
                     pred_plots = False
