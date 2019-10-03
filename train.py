@@ -1,7 +1,7 @@
-from model import GAN, Discriminator, Generator, DataGenerator
 
 
 def train():
+    from model import GAN
     gan = GAN(latent_dim=5, seq_length=30, batch_size=128)
     gan.discriminator.model.summary()
     gan.load_weights()
@@ -9,5 +9,11 @@ def train():
               load_weights=True, metric='loss')
 
 
+def train_new():
+    from model_opt import GAN
+    gan = GAN()
+    gan.train(epochs=1, n_eval=1, d_train_steps=1, save_w_names=("g2", "d2"))
+
+
 if __name__ == '__main__':
-    train()
+    train_new()

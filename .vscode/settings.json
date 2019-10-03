@@ -1,3 +1,4 @@
 {
-    "python.venvPath": "~/tf2"
+    "python.venvPath": "~/tf2",
+    "python.pythonPath": "C:\\Users\\duan_\\Anaconda2\\envs\\tensorflow\\python.exe"
 }

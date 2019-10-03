@@ -246,7 +246,7 @@ class GAN:
 
 
 if __name__ == '__main__':
-    gan = GAN(latent_dim=5, seq_length=30, batch_size=128)
+    gan = GAN(latent_dim=5, seq_length=128, batch_size=128)
     gan.generator.model.summary()
     gan.discriminator.model.summary()
     gan.train(epochs=97, n_eval=1, d_train_steps=5,
